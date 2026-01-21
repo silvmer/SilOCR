@@ -1,0 +1,147 @@
+<!-- SilOCR - Local-First Batch Transcription Tool -->
+<!-- Copyright (C) 2026 Sil -->
+<!-- This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License v3.0</strong> as published by the Free Software Foundation, -->
+<!-- https://www.gnu.org/licenses/gpl-3.0.en.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SilOCR - Local-First Batch Transcription Tool</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 900px; margin: 20px auto; padding: 20px; background-color: #f0f2f5; color: #333; }
+        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        h2 { color: #007bff; margin-top: 0; }
+        .drop-zone { border: 3px dashed #007bff; padding: 40px; text-align: center; border-radius: 12px; cursor: pointer; background: #f8fbff; margin-bottom: 25px; transition: background 0.3s; }
+        .drop-zone:hover { background: #eef5ff; }
+        #queue { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; min-height: 60px; padding: 15px; background: #e9ecef; border-radius: 10px; border: 1px solid #ddd; }
+        .queue-item { width: 90px; height: 90px; object-fit: cover; border-radius: 8px; border: 3px solid #fff; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .controls { display: flex; gap: 15px; margin-bottom: 25px; }
+        button { padding: 14px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; flex-grow: 1; transition: transform 0.1s, opacity 0.2s; }
+        button:active { transform: scale(0.98); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-process { background: #007bff; color: white; }
+        .btn-copy { background: #28a745; color: white; }
+        .btn-clear { background: #dc3545; color: white; }
+        .status-bar { font-weight: bold; color: #007bff; margin-bottom: 15px; text-align: center; min-height: 20px; }
+        textarea { width: 100%; min-height: 350px; padding: 20px; border-radius: 10px; border: 1px solid #ccc; font-family: 'Courier New', Courier, monospace; font-size: 14px; line-height: 1.5; box-sizing: border-box; resize: vertical; background-color: #fafafa; }
+        
+        /* The Visible License Footer Style */
+        .license-footer { 
+            margin-top: 30px; 
+            padding-top: 20px; 
+            border-top: 1px solid #eee; 
+            font-size: 13px; 
+            color: #666; 
+            text-align: center; 
+            line-height: 1.6;
+        }
+        .license-footer a { color: #007bff; text-decoration: none; }
+    </style>
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+
+<div class="card">
+    <h2>SilOCR Station</h2>
+    <p>Fast, local-first batch transcription. Add images to the queue by pasting (Ctrl+V) or uploading.</p>
+
+    <div class="drop-zone" id="drop-zone">
+        <input type="file" id="file-input" accept="image/*" multiple style="display:none">
+        <strong>Drop images here, click to upload, or Paste (Ctrl+V)</strong>
+    </div>
+
+    <div id="queue"></div>
+    <div class="status-bar" id="status-msg">Waiting for images...</div>
+
+    <div class="controls">
+        <button id="process-btn" class="btn-process">Start Batch OCR</button>
+        <button id="copy-btn" class="btn-copy">Copy Result</button>
+        <button id="clear-btn" class="btn-clear">Clear All</button>
+    </div>
+
+    <textarea id="output" placeholder="Your transcribed text will appear here..."></textarea>
+
+    <div class="license-footer">
+        <strong>SilOCR - Local-First Batch Transcription Tool</strong><br>
+        Copyright (C) 2026 Sil<br>
+        This program is free software: you can redistribute it and/or modify it under the terms of the 
+        <strong>GNU General Public License v3.0</strong> as published by the Free Software Foundation, 
+        version 3. See <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank">license details</a>.
+    </div>
+</div>
+
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js').catch(err => console.error('PWA Error:', err));
+        });
+    }
+
+    const fileInput = document.getElementById('file-input');
+    const dropZone = document.getElementById('drop-zone');
+    const queueDiv = document.getElementById('queue');
+    const output = document.getElementById('output');
+    const statusMsg = document.getElementById('status-msg');
+    const processBtn = document.getElementById('process-btn');
+    const copyBtn = document.getElementById('copy-btn');
+    const clearBtn = document.getElementById('clear-btn');
+
+    let imageQueue = [];
+
+    function addImageToQueue(file) {
+        if (file && file.type.startsWith('image/')) {
+            imageQueue.push(file);
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(file);
+            img.className = 'queue-item';
+            queueDiv.appendChild(img);
+            statusMsg.innerText = `${imageQueue.length} image(s) ready in queue.`;
+        }
+    }
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => Array.from(e.target.files).forEach(addImageToQueue));
+
+    window.addEventListener('paste', (e) => {
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        for (let item of items) {
+            if (item.kind === 'file') addImageToQueue(item.getAsFile());
+        }
+    });
+
+    processBtn.addEventListener('click', async () => {
+        if (imageQueue.length === 0) return alert("Please add some images first!");
+        processBtn.disabled = true;
+        output.value = "";
+        for (let i = 0; i < imageQueue.length; i++) {
+            statusMsg.innerText = `Processing ${i + 1} of ${imageQueue.length}...`;
+            try {
+                const result = await Tesseract.recognize(imageQueue[i], 'eng');
+                output.value += `--- Image ${i + 1} ---\n${result.data.text}\n\n`;
+            } catch (err) {
+                output.value += `--- Image ${i + 1} ---\n[Error: Could not read image]\n\n`;
+            }
+        }
+        statusMsg.innerText = "All images processed!";
+        processBtn.disabled = false;
+    });
+
+    copyBtn.addEventListener('click', () => {
+        output.select();
+        document.execCommand('copy');
+        alert("Text copied to clipboard!");
+    });
+
+    clearBtn.addEventListener('click', () => {
+        imageQueue = [];
+        queueDiv.innerHTML = "";
+        output.value = "";
+        statusMsg.innerText = "Queue cleared.";
+        fileInput.value = "";
+    });
+</script>
+
+</body>
+</html>

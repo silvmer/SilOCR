@@ -1,0 +1,19 @@
+{
+  "name": "SilOCR Transcription Station",
+  "short_name": "SilOCR",
+  "description": "A local-first, batch OCR tool for private and fast transcription.",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#007bff",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "note": "Licensed under GNU GPL v3"
+}
