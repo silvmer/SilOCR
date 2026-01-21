@@ -1,4 +1,4 @@
-const CACHE_NAME = 'silocr-cache-v1';
+const CACHE_NAME = 'silvocr-cache-v1';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -11,7 +11,7 @@ const ASSETS_TO_CACHE = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('SilOCR: Caching shell assets');
+      console.log('SilvOCR: Caching shell assets');
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
@@ -25,4 +25,5 @@ self.addEventListener('fetch', (event) => {
       return response || fetch(event.request);
     })
   );
+
 });
