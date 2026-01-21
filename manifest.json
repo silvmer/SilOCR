@@ -1,6 +1,6 @@
 {
-  "name": "SilOCR Transcription Station",
-  "short_name": "SilOCR",
+  "name": "SilvOCR Transcription Station",
+  "short_name": "SilvOCR",
   "description": "A local-first, batch OCR tool for private and fast transcription.",
   "start_url": "index.html",
   "display": "standalone",
@@ -16,4 +16,5 @@
   ],
   "categories": ["productivity", "utilities"],
   "note": "Licensed under GNU GPL v3"
+
 }
